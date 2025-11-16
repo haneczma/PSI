@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;
     char databuf[MAX_DGRAMSIZE];
     int dgram_size = 2;
-
     if (argc != 4) {
         errx(0, "Incorrect number of arguments. Correct usage: <server ip> <port> <datagram size (power of 2)>\n", argv[0]);
     }
@@ -46,16 +45,17 @@ int main(int argc, char *argv[])
 
     // Connect to server
     connect (sock, (struct sockaddr *) &server, sizeof(server) );
-    sprintf ("Connected to: %s\n", argv[1]);
+    printf ("Connected to: %s\n", argv[1]);
+	fflush(stdout);
 
-
-    for (int i=0; i<atol(argv[3]); i++ ) {
+	int i;
+    for (i=0; i<atol(argv[3]); i++ ) {
         struct timeval send_time, recieve_time;
 
         memset( databuf, '*', dgram_size );
 
         // Send datagram
-        fflush( stdout );
+        // fflush( stdout );
         gettimeofday(&send_time, NULL);
         if ((send( sock, databuf, dgram_size, 0 )) <0 ) {
             perror("Error while sending\n");
@@ -73,7 +73,8 @@ int main(int argc, char *argv[])
         }
 
         sprintf("Datagram size: %i Response delay: %lf", dgram_size, timediff(send_time, recieve_time));
-        dgram_size = dgram_size * 2;
+	fflush(stdout);        
+	dgram_size = dgram_size * 2;
     }
 
     close(sock);

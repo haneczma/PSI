@@ -2,4 +2,4 @@ FROM gcc:4.9
 COPY . /Client
 WORKDIR /Client
 RUN gcc -o udp_client udp_client.c
-CMD  ["./udp_client", "udp_server_ip", "8888", "10"]
+ENTRYPOINT	["./udp_client"]
