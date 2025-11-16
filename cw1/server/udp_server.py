@@ -2,7 +2,7 @@ import socket
 import sys
 from time import time
 
-HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+HOST = '0.0.0.0'  # Standard loopback interface address (localhost)
 BUFSIZE = 1024
 
 times_recieved = []
@@ -33,6 +33,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
 
     response = str(len(data)).encode()
     s.sendto(response, address )
-    print(f'Sending number of bytes recieved ({len(data)}) at:{time_recieved}')
+    print(f'Sending number of bytes recieved ({len(data)}) at: {time_recieved}')
     times_recieved.append(time_recieved)
     print(times_recieved)
