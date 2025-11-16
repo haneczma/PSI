@@ -1,6 +1,3 @@
-FROM gcc:4.9
-COPY . /Server
-WORKDIR /Server/
-RUN gcc -o udp_server udp_server.c
-EXPOSE 8888
-CMD ["./udp_server", "8888"]
+FROM python:3
+ADD udp_server.py /
+ENTRYPOINT [ "python", "./udp_server.py"]
