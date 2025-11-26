@@ -50,21 +50,37 @@ Node* makeTree(int n)
     return makeChild(0, n);
 }
 
-// sends binary tree in DFS order 
-//(0;1;3;7;8;4;9;10;2;5;11;12;6;13;14) for 15 Nodes
-void sendBinaryTree(Node* tree, int index, int n, int sock)
+// sends binary tree in BFS order 
+//(0;1;2;3;4;5;6;7;8;9;10;11;12;13;14) for 15 Nodes
+void sendBinaryTree(Node* tree, int sock, int treeSize)
 {
     if (!tree) return;
-    if (index >= n) return;
 
-    int data[2] = { tree->id, tree->value };
-    if (send(sock, data, sizeof(data), 0) != sizeof(data))
-        bailout("send");
-    printf("Sent id=%d value=%d at array_index=%d\n",
-           tree->id, tree->value, index);
+    Node** queue = malloc(sizeof(Node*) * treeSize);
+    int front = 0, back = 0;
 
-    sendBinaryTree(tree->left,  2*index + 1, n, sock);
-    sendBinaryTree(tree->right, 2*index + 2, n, sock);
+    queue[back++] = tree;
+
+    while (front < back)
+    {
+        Node* n = queue[front++];
+
+        int data[2] = { n->id, n->value };
+        if (send(sock, data, sizeof(data), 0) != sizeof(data))
+            bailout("send failed");
+
+        if (n->left)  queue[back++] = n->left;
+        if (n->right) queue[back++] = n->right;
+    }
+    free(queue);
+}
+
+void freeTree(Node* tree)
+{
+    if (!tree) return;
+    freeTree(tree->left);
+    freeTree(tree->right);
+    free(tree);
 }
 
 int main(int argc, char *argv[])
@@ -106,8 +122,9 @@ int main(int argc, char *argv[])
 
     // send the binary tree
     Node* tree = makeTree(TREE_SIZE);
-    sendBinaryTree(tree, 0, TREE_SIZE, sock);
+    sendBinaryTree(tree, sock, TREE_SIZE);
 
+    freeTree(tree);
     close(sock);
     exit(0);
 }
