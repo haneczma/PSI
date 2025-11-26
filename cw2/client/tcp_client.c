@@ -8,10 +8,63 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <err.h>
+const int TREE_SIZE = 15;
 
 void bailout(const char *message){
     perror(message);
     exit(1);
+}
+
+typedef struct Node {
+    int id;
+    int value;
+    struct Node* left;
+    struct Node* right;
+} Node;
+
+Node* createNode(int id, int value)
+{
+    Node* node = malloc(sizeof(Node));
+    node->id = id;
+    node->value = value;
+    node->left = NULL;
+    node->right = NULL;
+    return node;
+}
+
+Node* makeChild(int index, int n)
+{
+    if (index >= n)
+        return NULL;
+
+    Node* node = createNode(index, index);
+    node->left  = makeChild(2*index + 1, n);
+    node->right = makeChild(2*index + 2, n);
+
+    return node;
+}
+
+Node* makeTree(int n)
+{
+    if (n <= 0) return NULL;
+    return makeChild(0, n);
+}
+
+// sends binary tree in DFS order 
+//(0;1;3;7;8;4;9;10;2;5;11;12;6;13;14) for 15 Nodes
+void sendBinaryTree(Node* tree, int index, int n, int sock)
+{
+    if (!tree) return;
+    if (index >= n) return;
+
+    int data[2] = { tree->id, tree->value };
+    if (send(sock, data, sizeof(data), 0) != sizeof(data))
+        bailout("send");
+    printf("Sent id=%d value=%d at array_index=%d\n",
+           tree->id, tree->value, index);
+
+    sendBinaryTree(tree->left,  2*index + 1, n, sock);
+    sendBinaryTree(tree->right, 2*index + 2, n, sock);
 }
 
 int main(int argc, char *argv[])
@@ -50,34 +103,10 @@ int main(int argc, char *argv[])
     connect (sock, (struct sockaddr *) &server, sizeof(server) );
     printf ("Connected to: %s\n", argv[1]);
 	fflush(stdout);
-    /*
-	int i;
-    for (i=0; i<atol(argv[3]); i++ ) {
-        struct timeval send_time, recieve_time;
 
-        memset( databuf, '*', dgram_size );
-
-        // Send datagram
-        if ((send( sock, databuf, dgram_size, 0 )) <0 ) {
-            perror("Error while sending\n");
-        }
-	gettimeofday(&send_time, NULL);
-        // Server responds with number of bytes in datagram
-        int response;
-        int rec = recv(sock, &databuf, MAX_DGRAMSIZE, 0);
-	gettimeofday(&recieve_time, NULL);
-	databuf[rec] = '\0';
-	response =  atoi(databuf);
-        if (rec < 0) {
-            bailout("Error while receving a response\n");
-        }
-        else if(response != dgram_size) {
-            bailout("Invalid server response\n");
-        }
-
-        printf("Datagram size: %i Response delay: %lf\n", dgram_size, timediff(send_time, recieve_time));
-	fflush(stdout);        
-    }*/
+    // send the binary tree
+    Node* tree = makeTree(TREE_SIZE);
+    sendBinaryTree(tree, 0, TREE_SIZE, sock);
 
     close(sock);
     exit(0);
