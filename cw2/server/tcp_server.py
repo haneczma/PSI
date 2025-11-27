@@ -45,7 +45,7 @@ def build_tree(values):
             queue.append((node.right, ri))
     return root
 
-def draw_tree_levels(root):
+def draw_tree(root):
     if root is None:
         print("Drzewo puste")
         return
