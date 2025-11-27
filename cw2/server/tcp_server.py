@@ -35,21 +35,43 @@ def build_tree(values):
     queue = [(root, 0)]
     while queue:
         node, idx = queue.pop(0)
-        left_i = 2 * idx + 1
-        right_i = 2 * idx + 2
-        if left_i < len(values) and values[left_i] is not None:
-            node.left = Node(values[left_i])
-            queue.append((node.left, left_i))
-        if right_i < len(values) and values[right_i] is not None:
-            node.right = Node(values[right_i])
-            queue.append((node.right, right_i))
+        li = 2 * idx + 1
+        ri = 2 * idx + 2
+        if li < len(values) and values[li] is not None:
+            node.left = Node(values[li])
+            queue.append((node.left, li))
+        if ri < len(values) and values[ri] is not None:
+            node.right = Node(values[ri])
+            queue.append((node.right, ri))
     return root
 
-def inorder(node):
-    if node:
-        inorder(node.left)
-        print(node.val, end=" ")
-        inorder(node.right)
+def draw_tree(root):
+    lines = []
+    level = [root]
+    width = 4
+
+    while any(level):
+        current_vals = []
+        next_level = []
+        for node in level:
+            if node:
+                current_vals.append(f"{node.val}")
+                next_level.append(node.left)
+                next_level.append(node.right)
+            else:
+                current_vals.append(" ")
+                next_level.append(None)
+                next_level.append(None)
+
+        spacing = width * (2 ** (len(lines)))
+        line = ""
+        for val in current_vals:
+            line += val.center(spacing)
+        lines.append(line)
+        level = next_level
+
+    for line in lines:
+        print(line.rstrip())
 
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -71,9 +93,9 @@ def main():
 
     print("\nRekonstrukcja drzewa...")
     root = build_tree(values)
-    print("Inorder:", end=" ")
-    inorder(root)
-    print()
+
+    print("\nDrzewo:")
+    draw_tree(root)
 
     conn.close()
     server.close()
