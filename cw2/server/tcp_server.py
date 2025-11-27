@@ -45,33 +45,32 @@ def build_tree(values):
             queue.append((node.right, ri))
     return root
 
-def draw_tree(root):
-    lines = []
-    level = [root]
-    width = 4
+def draw_tree_levels(root):
+    if root is None:
+        print("Drzewo puste")
+        return
 
-    while any(level):
-        current_vals = []
-        next_level = []
-        for node in level:
-            if node:
-                current_vals.append(f"{node.val}")
-                next_level.append(node.left)
-                next_level.append(node.right)
-            else:
-                current_vals.append(" ")
-                next_level.append(None)
-                next_level.append(None)
+    queue = [(root, 0)]
+    current_level = 0
+    level_nodes = []
 
-        spacing = width * (2 ** (len(lines)))
-        line = ""
-        for val in current_vals:
-            line += val.center(spacing)
-        lines.append(line)
-        level = next_level
+    while queue:
+        node, level = queue.pop(0)
 
-    for line in lines:
-        print(line.rstrip())
+        if level != current_level:
+            print(f"Poziom {current_level}: " + " ".join(map(str, level_nodes)))
+            level_nodes = []
+            current_level = level
+
+        level_nodes.append(node.val)
+
+        if node.left:
+            queue.append((node.left, level + 1))
+        if node.right:
+            queue.append((node.right, level + 1))
+
+    print(f"Poziom {current_level}: " + " ".join(map(str, level_nodes)))
+
 
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
