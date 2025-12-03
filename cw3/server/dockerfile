@@ -1,5 +1,6 @@
 FROM gcc:4.9
-COPY . /Client
-WORKDIR /Client
-RUN gcc -o udp_client udp_client.c
-ENTRYPOINT	["./udp_server"]
+COPY . /Server
+WORKDIR /Server/
+RUN gcc -o udp_server udp_server.c udp_server.h
+EXPOSE 8888
+ENTRYPOINT	["./udp_server", "8888"]
