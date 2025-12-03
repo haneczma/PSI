@@ -27,3 +27,18 @@ W katalogu serwer znajduje sie konfiguracja dla kontenera serwera w dockerze ora
 
 Skrypt app2.sh służy do zbudowania i włączenia klienta oraz serwera.
 Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu cw2.
+
+# Ćwiczenie trzecie
+
+## Układ plików
+
+W katalogu cw3 znajduje się rozwiazanie zadania Z1.22.
+
+W katalogu client znajduje sie konfiguracja dla kontenera klienta w dockerze oraz program w pythonie realizujacy część zadania 1 (klient UDP).
+
+W katalogu serwer znajduje sie konfiguracja dla kontenera serwera w dockerze oraz programy w c realizujace część zadania 2 (serwer UDP).
+
+## Wywołanie rozwiazania
+
+Skrypt app3.sh służy do zbudowania i włączenia klienta oraz serwera.
+Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu cw2.
