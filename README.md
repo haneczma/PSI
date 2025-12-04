@@ -40,5 +40,5 @@ W katalogu serwer znajduje sie konfiguracja dla kontenera serwera w dockerze ora
 
 ## Wywołanie rozwiazania
 
-Skrypt app3.sh służy do zbudowania i włączenia klienta oraz serwera.
-Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu cw2.
+Skrypt app3-compose.sh służy do zbudowania i włączenia klienta oraz serwera.
+Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu cw3.
