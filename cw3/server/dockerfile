@@ -1,6 +1,8 @@
-FROM gcc:4.9
+FROM gcc:12
+RUN apt-get update
+RUN apt-get install -y iproute2
 COPY . /Server
 WORKDIR /Server/
 RUN gcc -o udp_server udp_server.c -lssl -lcrypto
-EXPOSE 8888
-ENTRYPOINT	["./udp_server", "8000"]
+EXPOSE 8000
+#ENTRYPOINT	["./udp_server", "8000"]

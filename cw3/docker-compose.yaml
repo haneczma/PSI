@@ -6,9 +6,12 @@ services:
     tty: true
     cap_add:
       - NET_ADMIN
+    depends_on:
+      - server
   server:
     container_name: z37_server
     build: ./server
     tty: true
     cap_add:
       - NET_ADMIN
+    command: sh -c "tc qdisc add dev eth0 root netem delay 1000ms 500ms loss 50%& ./udp_server 8000"
