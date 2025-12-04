@@ -45,11 +45,13 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;
     struct sockaddr_storage peer_addr;
 
+    //Open file in write mode
     FILE *file = fopen(FILE_PATH, "wb");
 
     if (argc != 2)
         errx(0, "Incorrect number of arguments. Correct usage: <port>", argv[0]);
 
+    //Create socket
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         bailout("Error opening socket\n");
 
@@ -57,10 +59,11 @@ int main(int argc, char *argv[])
     server.sin_port = htons(atoi(argv[1]));
     server.sin_addr.s_addr = INADDR_ANY;
 
+    //Bind socket to port
     if ((s = bind(sock, (struct sockaddr *)&server, sizeof(server))) < 0)
         bailout("Bind unsuccessfull");
 
-    printf("Waiting for packets");
+    printf("[SERVER] Waiting for packets\n");
 
     while(1)
     {
@@ -70,6 +73,7 @@ int main(int argc, char *argv[])
         ssize_t data_size;
 
         peer_addrlen = sizeof(peer_addr);
+        //Recieve packet
         pkt_size = recvfrom(sock, buf, BUF_SIZE, 0,
                          (struct sockaddr *)&peer_addr, &peer_addrlen);
         if (pkt_size < 4)
@@ -91,8 +95,10 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        //Get packet number in sequence
         memcpy(&seq_be, buf, 4);
         seq = ntohl(seq_be);
+
         if (seq == count){
             data = buf + 4;
             data_size = pkt_size - 4;
@@ -108,10 +114,24 @@ int main(int argc, char *argv[])
         }
         else if (seq == EOF_UDP){
             printf("[SERVER] End of file\n");
-	    fflush(stdout);
-		fflush(file);
-		fclose(file);
-            break;
+            fflush(stdout);
+            //Save file
+            fflush(file);
+            fclose(file);
+            
+            //Get hash
+            unsigned char file_hash[SHA256_DIGEST_LENGTH];
+            hash(file_hash);
+            sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
+            printf("[SERVER] ");
+            int i = 0;
+            for(i; i<SHA256_DIGEST_LENGTH; ++i)
+            {
+                //Print in hex
+                printf("%02x", file_hash[i]);
+            }
+            printf("\n");
+            fflush(stdout);
         }
         else 
         {
@@ -119,17 +139,5 @@ int main(int argc, char *argv[])
         }
     }
 
-    unsigned char file_hash[SHA256_DIGEST_LENGTH];
-    hash(file_hash);
-    int i = 0;
-    sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
-    printf("[SERVER] ");
-    for(i; i<SHA256_DIGEST_LENGTH; ++i)
-    {
-        printf("%02x", file_hash[i]);
-    }
-    printf("\n");
-    fflush(stdout);
-    
     return(0);
 }
