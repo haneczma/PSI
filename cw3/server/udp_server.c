@@ -27,7 +27,7 @@ int hash(unsigned char hash[SHA256_DIGEST_LENGTH]) {
 
     SHA256_CTX sha;
     SHA256_Init(&sha);
-    while (data_size = fread(buf, sizeof(char), sizeof(buf), file) > 0) {
+    while ((data_size = fread(buf, sizeof(char), sizeof(buf), file)) > 0) {
         SHA256_Update(&sha, buf, data_size);
     }
     SHA256_Final(hash, &sha);
@@ -107,10 +107,10 @@ int main(int argc, char *argv[])
             continue;
         }
         else if (seq == EOF_UDP){
-            fflush(file);
-            fclose(file);
             printf("[SERVER] End of file\n");
-		    fflush(stdout);
+	    fflush(stdout);
+		fflush(file);
+		fclose(file);
             break;
         }
         else 
