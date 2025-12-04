@@ -78,8 +78,11 @@ def main():
                 seq += 1
 
         print("[CLIENT] Wszystkie pakiety wysłane, czekam na hash z serwera...")
-        server_hash, _ = sock.recvfrom(1024)
-        server_hash = server_hash.hex()
+        while True:
+            server_hash, _ = sock.recvfrom(1024)
+            if len(server_hash) == 32:
+                server_hash = server_hash.hex()
+                break
 
         print("[CLIENT] Hash klienta :", file_hash)
         print("[CLIENT] Hash serwera:", server_hash)

@@ -12,6 +12,7 @@
 #define PACKET_SIZE 100
 #define FILE_PATH "./recv_data.bin"
 #define EOF_UDP 0xFFFFFFFF
+#define RETRIES 10
 
 void bailout(const char *message){
     perror(message);
@@ -122,24 +123,30 @@ int main(int argc, char *argv[])
             fflush(file);
             fclose(file);
             
-            //Get hash
-            unsigned char file_hash[SHA256_DIGEST_LENGTH];
-            hash(file_hash);
-            sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
-            printf("[SERVER] ");
-            int i = 0;
-            for(i; i<SHA256_DIGEST_LENGTH; ++i)
-            {
-                //Print in hex
-                printf("%02x", file_hash[i]);
-            }
-            printf("\n");
-            fflush(stdout);
+            break;
         }
         else 
         {
             bailout("Missing packets\n");
         }
+    }
+
+    //Get hash
+    unsigned char file_hash[SHA256_DIGEST_LENGTH];
+    hash(file_hash);
+    printf("[SERVER] ");
+    int i = 0;
+    for(i; i<SHA256_DIGEST_LENGTH; ++i)
+    {
+        //Print in hex
+        printf("%02x", file_hash[i]);
+    }
+    printf("\n");
+    fflush(stdout);
+
+    for(i; i < RETRIES; ++i){
+
+        sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
     }
 
     return(0);
