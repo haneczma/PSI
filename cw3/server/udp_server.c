@@ -110,6 +110,9 @@ int main(int argc, char *argv[])
         }
         else if (seq < count)
         {
+            sendto(sock, &seq_be, sizeof(seq_be), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
+            printf("[SERVER] Send confirmation of recevieng %zd packet\n", seq);
+            fflush(stdout);
             continue;
         }
         else if (seq == EOF_UDP){

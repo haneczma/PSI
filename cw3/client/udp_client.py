@@ -63,7 +63,8 @@ def main():
                         if ack_seq == seq:
                             print(f"[OK] Pakiet {seq} potwierdzony")
                             break
-
+                        else if ack_seq < seq:
+                            continue
                         else:
                             print(f"[BAD ACK] Otrzymano {ack_seq}, oczekiwano {seq}")
 
