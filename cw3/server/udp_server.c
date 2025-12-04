@@ -18,6 +18,7 @@ void bailout(const char *message){
 
 int main(int argc, char *argv[])
 {
+    uint32_t count = 0;
     int sock, s;
     char buf[BUF_SIZE];
     ssize_t pkt_size;
@@ -44,7 +45,6 @@ int main(int argc, char *argv[])
 
     while(1)
     {
-        uint32_t count=0;
         uint32_t seq, seq_be;
         char host[NI_MAXHOST], service[NI_MAXSERV];
         uint8_t *data;
@@ -62,10 +62,10 @@ int main(int argc, char *argv[])
         s = getnameinfo((struct sockaddr *)&peer_addr, peer_addrlen, host, NI_MAXHOST,
                         service, NI_MAXSERV, NI_NUMERICSERV);
         if (s == 0)
-	{
+	    {
             printf("[SERVER] Received %zd bytes from %s:%s\n", pkt_size, host, service);
             fflush(stdout);
-	}
+	    }
         else
         {
             fprintf(stderr, "Error while getting client data\n");
@@ -82,10 +82,15 @@ int main(int argc, char *argv[])
             printf("[SERVER] Send confirmation of recevieng %zd packet\n", seq);
             fflush(stdout);
             count = count + 1;
-		printf("Count %zd seq %zd", count, seq);
-		fflush(stdout);
+		    printf("Count %zd seq %zd", count, seq);
+		    fflush(stdout);
         }
-        else {
+        else if (seq < count)
+        {
+            continue;
+        }
+        else 
+        {
             bailout("Missing packets\n");
         }
 
