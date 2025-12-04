@@ -78,7 +78,7 @@ def main():
 
         print("[CLIENT] Wszystkie pakiety wysłane, czekam na hash z serwera...")
         server_hash, _ = sock.recvfrom(1024)
-        server_hash = server_hash.decode()
+        server_hash = server_hash.hex()
 
         print("[CLIENT] Hash klienta :", file_hash)
         print("[CLIENT] Hash serwera:", server_hash)

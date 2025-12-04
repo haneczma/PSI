@@ -11,7 +11,7 @@
 #define BUF_SIZE 2048
 #define PACKET_SIZE 100
 #define FILE_PATH "./recv_data.bin"
-#define EOF 0xFFFFFFFF
+#define EOF_UDP 0xFFFFFFFF
 
 void bailout(const char *message){
     perror(message);
@@ -21,7 +21,7 @@ void bailout(const char *message){
 int hash(unsigned char hash[SHA256_DIGEST_LENGTH]) {
     unsigned char buf[BUF_SIZE];
     ssize_t data_size;
-    file = fopen(FILE_PATH, "rb");
+    FILE *file = fopen(FILE_PATH, "rb");
     if(!file)
         bailout("File not found\n");
 
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
         {
             continue;
         }
-        else if (seq == EOF){
+        else if (seq == EOF_UDP){
             fflush(file);
             fclose(file);
             printf("[SERVER] End of file\n");
@@ -125,11 +125,11 @@ int main(int argc, char *argv[])
         printf("[SERVER] ");
         for(i; i<SHA256_DIGEST_LENGTH; ++i)
         {
-            printf("02x", file_hash[i]);
+            printf("%02x", file_hash[i]);
         }
         printf("\n");
         fflush(stdout);
     }
 
-    return(0)
+    return(0);
 }
