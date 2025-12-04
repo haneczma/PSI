@@ -4,8 +4,11 @@ import hashlib
 import os
 import struct
 import sys
+import time
 
 PACKET_SIZE = 100
+ACK_TIMEOUT = 0.3
+MAX_RETRIES = 20
 FILE_PATH = "data.bin"
 
 def generate_random_file(path, size=10000):
@@ -33,6 +36,7 @@ def main():
     print("[CLIENT] Hash klienta:", file_hash)
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(ACK_TIMEOUT)
         with open(FILE_PATH, "rb") as f:
             seq = 0
             while True:
@@ -41,12 +45,47 @@ def main():
                     break
 
                 packet = struct.pack("!I", seq) + data
+                retries = 0
+
                 sock.sendto(packet, (server, port))
                 print(f"[SEND] seq={seq}, bytes={len(data)}")
+
+                while True:
+                    sock.sendto(packet, (server, port))
+                    try:
+                        ack, _ = sock.recvfrom(4)
+                        ack_seq = struct.unpack("!I", ack)[0]
+                        print(f"[RECV ACK] {ack_seq}")
+
+                        if ack_seq == seq:
+                            print(f"[OK] Pakiet {seq} potwierdzony")
+                            break
+
+                        else:
+                            print(f"[BAD ACK] Otrzymano {ack_seq}, oczekiwano {seq}")
+
+                    except socket.timeout:
+                        retries += 1
+                        print(f"[TIMEOUT] Brak ACK dla {seq}, próba {retries}")
+                        if retries > MAX_RETRIES:
+                            print("[ERROR] Zbyt wiele retransmisji. Przerwano.")
+                            return
+
                 seq += 1
 
-    print("[CLIENT] Wszystkie pakiety wysłane.")
-    print("[CLIENT] Hash klienta:", file_hash)
+        print("[CLIENT] Wszystkie pakiety wysłane, czekam na hash z serwera...")
+        server_hash, _ = sock.recvfrom(1024)
+        server_hash = server_hash.decode()
+
+        print("[CLIENT] Hash klienta :", file_hash)
+        print("[CLIENT] Hash serwera:", server_hash)
+
+        if server_hash == file_hash:
+            print("[RESULT] OK — hashe zgodne")
+
+        else:
+            print("[RESULT] BAD — hashe różne")
+            print("[CLIENT] Hash klienta:", file_hash)
 
 if __name__ == "__main__":
     main()
