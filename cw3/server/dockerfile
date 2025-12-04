@@ -3,4 +3,4 @@ COPY . /Server
 WORKDIR /Server/
 RUN gcc -o udp_server udp_server.c 
 EXPOSE 8888
-ENTRYPOINT	["./udp_server", "8888"]
+ENTRYPOINT	["./udp_server", "8000"]
