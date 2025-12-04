@@ -12,7 +12,7 @@
 #define PACKET_SIZE 100
 #define FILE_PATH "./recv_data.bin"
 #define EOF_UDP 0xFFFFFFFF
-#define RETRIES 10
+#define RETRIES 20
 
 void bailout(const char *message){
     perror(message);
