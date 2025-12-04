@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
         s = getnameinfo((struct sockaddr *)&peer_addr, peer_addrlen, host, NI_MAXHOST,
                         service, NI_MAXSERV, NI_NUMERICSERV);
         if (s == 0)
-            fprintf("Received %zd bytes from %s:%s\n", pkt_size, host, service);
+            printf("Received %zd bytes from %s:%s\n", pkt_size, host, service);
         else
         {
             fprintf(stderr, "Error while getting client data\n");
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
             data = buf + 4;
             data_size = pkt_size - 4;
             fwrite(data, 1, data_size, file);
-            sendto(sock, seq_be, 4, 0, ((struct sockaddr *)&peer_addr, peer_addrlen));
+            sendto(sock, &seq_be, sizeof(seq_be), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
             count = count + 1;
         }
         else {
