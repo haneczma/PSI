@@ -42,6 +42,8 @@ def main():
             while True:
                 data = f.read(PACKET_SIZE)
                 if not data:
+                    packet = struct.pack("!I", -1)
+                    sock.sendto(packet, (server, port))
                     break
 
                 packet = struct.pack("!I", seq) + data

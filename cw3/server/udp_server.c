@@ -89,6 +89,10 @@ int main(int argc, char *argv[])
         {
             continue;
         }
+        else if (seq < 0){
+            fclose(file);
+            break;
+        }
         else 
         {
             bailout("Missing packets\n");
