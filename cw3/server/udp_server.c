@@ -8,41 +8,38 @@
 #include <unistd.h>
 
 #define BUF_SIZE 200
-
-#define PACKET_SIZE = 100
-#define FILE_PATH = "recv_data.bin"
+#define PACKET_SIZE 100
+#define FILE_PATH "recv_data.bin"
 
 void bailout(const char *message){
     perror(message);
     exit(1);
 }
 
-int hash(FILE *file)
-
 int main(int argc, char *argv[])
 {
-    int socket, s;
+    int sock, s;
     char buf[BUF_SIZE];
     ssize_t pkt_size;
     socklen_t peer_addrlen;
     struct sockaddr_in server;
     struct sockaddr_storage peer_addr;
 
-    FILE *file = fopen(FILE_PATH, "wb")
+    FILE *file = fopen(FILE_PATH, "wb");
 
     if (argc != 2)
-        errx(0, "Incorrect number of arguments. Correct usage: <port>", argv[0])
+        errx(0, "Incorrect number of arguments. Correct usage: <port>", argv[0]);
 
-    if ((socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         bailout("Error opening socket\n");
 
     server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(argv[1])); 
+    server.sin_port = htons(atoi(argv[1]));
     server.sin_addr.s_addr = INADDR_ANY;
 
-    if ((s = bind(socket, (struct sockaddr *)&server, sizeof(server))) < 0)
+    if ((s = bind(sock, (struct sockaddr *)&server, sizeof(server))) < 0)
         bailout("Bind unsuccessfull");
-    
+
     printf("Waiting for packets");
 
     while(1)
@@ -54,7 +51,7 @@ int main(int argc, char *argv[])
         ssize_t data_size;
 
         peer_addrlen = sizeof(peer_addr);
-        pkt_size = recvfrom(socket, buf, BUF_SIZE, 0,
+        pkt_size = recvfrom(sock, buf, BUF_SIZE, 0,
                          (struct sockaddr *)&peer_addr, &peer_addrlen);
         if (pkt_size < 4)
         {
@@ -75,10 +72,10 @@ int main(int argc, char *argv[])
         memcpy(&seq_be, buf, 4);
         seq = ntohl(seq_be);
         if (seq == count){
-            data = buffer + 4;
+            data = buf + 4;
             data_size = pkt_size - 4;
-            fwrite(data, sizeof(bin), data_size, file);
-            sendto(seq_be, (struct sockaddr *)&peer_addr, peer_addrlen);
+            fwrite(data, 1, data_size, file);
+            sendto(sock, seq_be, 4, 0, ((struct sockaddr *)&peer_addr, peer_addrlen));
             count = count + 1;
         }
         else {
