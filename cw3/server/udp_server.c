@@ -6,15 +6,33 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/sha.h>
 
-#define BUF_SIZE 200
+#define BUF_SIZE 2048
 #define PACKET_SIZE 100
-#define FILE_PATH "recv_data.bin"
+#define FILE_PATH "./recv_data.bin"
 #define EOF 0xFFFFFFFF
 
 void bailout(const char *message){
     perror(message);
     exit(1);
+}
+
+int hash(unsigned char hash[SHA256_DIGEST_LENGTH]) {
+    unsigned char buf[BUF_SIZE];
+    ssize_t data_size;
+    file = fopen(FILE_PATH, "rb");
+    if(!file)
+        bailout("File not found\n");
+
+    SHA256_CTX sha;
+    SHA256_Init(&sha);
+    while (data_size = fread(buf, sizeof(char), sizeof(buf), file) > 0) {
+        SHA256_Update(&sha, buf, data_size);
+    }
+    SHA256_Final(hash, &sha);
+    fclose(file);
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -83,15 +101,16 @@ int main(int argc, char *argv[])
             printf("[SERVER] Send confirmation of recevieng %zd packet\n", seq);
             fflush(stdout);
             count = count + 1;
-		    printf("Count %zd seq %zd", count, seq);
-		    fflush(stdout);
         }
         else if (seq < count)
         {
             continue;
         }
         else if (seq == EOF){
+            fflush(file);
             fclose(file);
+            printf("[SERVER] End of file\n");
+		    fflush(stdout);
             break;
         }
         else 
@@ -99,5 +118,18 @@ int main(int argc, char *argv[])
             bailout("Missing packets\n");
         }
 
+        unsigned char file_hash[SHA256_DIGEST_LENGTH];
+        hash(file_hash);
+        int i = 0;
+        sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
+        printf("[SERVER] ");
+        for(i; i<SHA256_DIGEST_LENGTH; ++i)
+        {
+            printf("02x", file_hash[i]);
+        }
+        printf("\n");
+        fflush(stdout);
     }
+
+    return(0)
 }

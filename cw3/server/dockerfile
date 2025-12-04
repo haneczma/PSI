@@ -1,6 +1,6 @@
 FROM gcc:4.9
 COPY . /Server
 WORKDIR /Server/
-RUN gcc -o udp_server udp_server.c 
+RUN gcc -o udp_server udp_server.c -lssl -lcrypto
 EXPOSE 8888
 ENTRYPOINT	["./udp_server", "8000"]
