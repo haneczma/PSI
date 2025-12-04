@@ -14,4 +14,4 @@ services:
     tty: true
     cap_add:
       - NET_ADMIN
-    command: sh -c "tc qdisc add dev eth0 root netem delay 1000ms 500ms loss 50%& ./udp_server 8000"
+    command: sh -c "tc qdisc add dev eth0 root netem delay 100ms 50ms loss 30%& ./udp_server 8000"
