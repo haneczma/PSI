@@ -134,6 +134,9 @@ int main(int argc, char *argv[])
     //Get hash
     unsigned char file_hash[SHA256_DIGEST_LENGTH];
     hash(file_hash);
+    for(i=0; i < RETRIES; ++i){
+        sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
+    }
     printf("[SERVER] ");
     int i = 0;
     for(i; i<SHA256_DIGEST_LENGTH; ++i)
@@ -144,10 +147,7 @@ int main(int argc, char *argv[])
     printf("\n");
     fflush(stdout);
 
-    for(i; i < RETRIES; ++i){
 
-        sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
-    }
 
     return(0);
 }
