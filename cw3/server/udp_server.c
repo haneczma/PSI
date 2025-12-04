@@ -117,19 +117,19 @@ int main(int argc, char *argv[])
         {
             bailout("Missing packets\n");
         }
-
-        unsigned char file_hash[SHA256_DIGEST_LENGTH];
-        hash(file_hash);
-        int i = 0;
-        sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
-        printf("[SERVER] ");
-        for(i; i<SHA256_DIGEST_LENGTH; ++i)
-        {
-            printf("%02x", file_hash[i]);
-        }
-        printf("\n");
-        fflush(stdout);
     }
 
+    unsigned char file_hash[SHA256_DIGEST_LENGTH];
+    hash(file_hash);
+    int i = 0;
+    sendto(sock, &file_hash, sizeof(file_hash), 0, (struct sockaddr *)&peer_addr, peer_addrlen);
+    printf("[SERVER] ");
+    for(i; i<SHA256_DIGEST_LENGTH; ++i)
+    {
+        printf("%02x", file_hash[i]);
+    }
+    printf("\n");
+    fflush(stdout);
+    
     return(0);
 }
