@@ -1,86 +1,89 @@
-/* (c) Grzegorz Blinowski 2000-2023 [ PSI] */
-/* this example from: getaddrinfo man page */
-
 #include <err.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
-#define BUF_SIZE 500
+#define BUF_SIZE 200
 
-#define bailout(s) \
-    {              \
-        perror(s); \
-        exit(1);   \
-    }
-#define Usage()                                               \
-    {                                                         \
-        errx(0, "Usage: %s address-or-ip [port]\n", argv[0]); \
-    }
-#define timeinms(tv) ((tv.tv_sec) * 1000.0 + (tv.tv_usec) / 1000.0)
+#define PACKET_SIZE = 100
+#define FILE_PATH = "recv_data.bin"
+
+void bailout(const char *message){
+    perror(message);
+    exit(1);
+}
+
+int hash(FILE *file)
 
 int main(int argc, char *argv[])
 {
-    int sfd, s;
+    int socket, s;
     char buf[BUF_SIZE];
-    ssize_t nread;
+    ssize_t pkt_size;
     socklen_t peer_addrlen;
     struct sockaddr_in server;
     struct sockaddr_storage peer_addr;
 
+    FILE *file = fopen(FILE_PATH, "wb")
+
     if (argc != 2)
-        Usage();
+        errx(0, "Incorrect number of arguments. Correct usage: <port>", argv[0])
 
-    if ((sfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-        bailout("socker() ");
+    if ((socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        bailout("Error opening socket\n");
 
-    server.sin_family = AF_INET;            /* Server is in Internet Domain */
-    server.sin_port = htons(atoi(argv[1])); /* Use any available port      */
-    server.sin_addr.s_addr = INADDR_ANY;    /* Server's Internet Address   */
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(argv[1])); 
+    server.sin_addr.s_addr = INADDR_ANY;
 
-    if ((s = bind(sfd, (struct sockaddr *)&server, sizeof(server))) < 0)
-        bailout("bind() ");
-    printf("bind() successful\n");
+    if ((s = bind(socket, (struct sockaddr *)&server, sizeof(server))) < 0)
+        bailout("Bind unsuccessfull");
+    
+    printf("Waiting for packets");
 
-    /* Read datagrams and echo them back to sender. */
-    printf("waiting for packets...\n");
-
-    for (;;)
+    while(1)
     {
-        long int counter = 0;
+        uint32_t count=0;
+        uint32_t seq, seq_be;
         char host[NI_MAXHOST], service[NI_MAXSERV];
-        double stimestamp, rtimestamp;
-        struct timeval tv;
+        uint8_t *data;
+        ssize_t data_size;
 
         peer_addrlen = sizeof(peer_addr);
-        nread = recvfrom(sfd, buf, BUF_SIZE, 0,
+        pkt_size = recvfrom(socket, buf, BUF_SIZE, 0,
                          (struct sockaddr *)&peer_addr, &peer_addrlen);
-        printf("recvfrom ok\n");
-        if (nread < 0)
+        if (pkt_size < 4)
         {
-            fprintf(stderr, "failed recvfrom\n");
-            continue; /* Ignore failed request */
+            fprintf(stderr, "Recvfrom not a valid package\n");
+            continue;
         }
 
         s = getnameinfo((struct sockaddr *)&peer_addr, peer_addrlen, host, NI_MAXHOST,
                         service, NI_MAXSERV, NI_NUMERICSERV);
         if (s == 0)
-            printf("Received %zd bytes from %s:%s\n", nread, host, service);
+            fprintf("Received %zd bytes from %s:%s\n", pkt_size, host, service);
         else
         {
-            fprintf(stderr, "getnameinfo() error: %s\n", gai_strerror(s));
+            fprintf(stderr, "Error while getting client data\n");
             continue;
         }
-        sscanf(buf, "%ld %lf", &counter, &stimestamp);
-        gettimeofday(&tv, NULL);
-        rtimestamp = timeinms(tv);
-        // printf("r=%lf s=%lf ", rtimestamp, stimestamp);
-        printf("Received counter = %ld time_delta = %10.2lf\n", counter, rtimestamp - stimestamp);
+
+        memcpy(&seq_be, buf, 4);
+        seq = ntohl(seq_be);
+        if (seq == count){
+            data = buffer + 4;
+            data_size = pkt_size - 4;
+            fwrite(data, sizeof(bin), data_size, file);
+            sendto(seq_be, (struct sockaddr *)&peer_addr, peer_addrlen);
+            count = count + 1;
+        }
+        else {
+            bailout("Missing packets\n");
+        }
+
     }
 }
