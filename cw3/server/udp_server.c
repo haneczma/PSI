@@ -10,6 +10,7 @@
 #define BUF_SIZE 200
 #define PACKET_SIZE 100
 #define FILE_PATH "recv_data.bin"
+#define EOF 0xFFFFFFFF
 
 void bailout(const char *message){
     perror(message);
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
         {
             continue;
         }
-        else if (seq < 0){
+        else if (seq == EOF){
             fclose(file);
             break;
         }

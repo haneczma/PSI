@@ -10,6 +10,7 @@ PACKET_SIZE = 100
 ACK_TIMEOUT = 0.3
 MAX_RETRIES = 20
 FILE_PATH = "data.bin"
+EOF = 0xFFFFFFFF
 
 def generate_random_file(path, size=10000):
     if not os.path.exists(path):
@@ -42,7 +43,7 @@ def main():
             while True:
                 data = f.read(PACKET_SIZE)
                 if not data:
-                    packet = struct.pack("!I", -1)
+                    packet = struct.pack("!I", EOF)
                     sock.sendto(packet, (server, port))
                     break
 
