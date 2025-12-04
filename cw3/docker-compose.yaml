@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  client:
+    container_name: z37_client
+    build: ./client
+    tty: true
+    cap_add:
+      - NET_ADMIN
+  server:
+    container_name: z37_server
+    build: ./server
+    tty: true
+    cap_add:
+      - NET_ADMIN
