@@ -65,66 +65,60 @@ def handle_client(conn, addr, cid):
     print(f"[+] Klient {addr}")
 
     try:
+        data = recv_exact(conn, 10)
+
+        header = struct.unpack(">H", data[:2])[0]
+        msg_type = header >> 14
+        if msg_type != MessageType.CLIENT_HELLO.value:
+            print("Połączenie tzreba zacząć od Client_hello")
+            return
+
+        g = header & 0x3FFF
+        p = struct.unpack(">I", data[2:6])[0]
+        A = struct.unpack(">I", data[6:10])[0]
+
+        b = random.randint(1, p - 1)
+        B = pow(g, b, p)
+
+        server_hello = struct.pack(">H I", MessageType.SERVER_HELLO.value << 14, B)
+        conn.sendall(server_hello)
+
+        shared_secret = pow(A, b, p)
+        encription_key, mac_key = derive_keys(shared_secret)
+
+        with lock:
+            clients[cid]["mac_key"] = mac_key
+            clients[cid]["encription_key"] = encription_key
+
         while True:
-            data = recv_exact(conn, 10)
+            # jawna długość ramki
+            raw_len = recv_exact(conn, 2)
+            length = struct.unpack(">H", raw_len)[0]
 
-            header = struct.unpack(">H", data[:2])[0]
-            msg_type = header >> 14
-            if msg_type != MessageType.CLIENT_HELLO.value:
-                return
+            ciphertext = recv_exact(conn, length)
+            mac = recv_exact(conn, MAC_LEN)
 
-            g = header & 0x3FFF
-            p = struct.unpack(">I", data[2:6])[0]
-            A = struct.unpack(">I", data[6:10])[0]
+            plaintext = decrypt_and_verify(encription_key, mac_key, ciphertext, mac)
 
-            b = random.randint(1, p - 1)
-            B = pow(g, b, p)
+            msg_type = plaintext[0]
+            payload = plaintext[1:]
 
-            server_hello = struct.pack(">H I", MessageType.SERVER_HELLO.value << 14, B)
-            conn.sendall(server_hello)
+            if msg_type == MessageType.ENCRYPTED_MSG.value:
+                print(f"[{cid}] {payload.decode()}")
 
-            shared_secret = pow(A, b, p)
-            encription_key, mac_key = derive_keys(shared_secret)
+            elif msg_type == MessageType.END_SESSION.value:
+                print(f"[{cid}] Sesja zakończona przez klienta")
+                break
 
-            with lock:
-                clients[cid]["mac_key"] = mac_key
+            else:
+                print("Nieznany typ wiadomości")
+                break
 
-            while True:
-                # jawny header, nie jestem pewien czy nie powinnien być szyfrowany
-                header = recv_exact(conn, 2)
-                h = struct.unpack(">H", header)[0]
-                mtype = h >> 14
-
-                if mtype == MessageType.ENCRYPTED_MSG.value:
-                    length = h & 0x3FFF
-                    ciphertext = recv_exact(conn, length)
-                    mac = recv_exact(conn, MAC_LEN)
-
-                    plaintext = decrypt_and_verify(
-                        encription_key, mac_key, ciphertext, mac
-                    )
-
-                    print(f"[{cid}] {plaintext.decode()}")
-
-                elif mtype == MessageType.END_SESSION.value:
-                    mac = recv_exact(conn, MAC_LEN)
-                    expected = hmac.new(mac_key, b"END", hashlib.sha256).digest()
-
-                    if mac == expected:
-                        print(f"[{cid}] Sesja zakończona przez klienta")
-                        break
-                    else:
-                        print("Nieudana próba przerwania sesji, niepoprawny MAC")
-
-                else:
-                    return
-
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[{cid}] Błąd: {e}")
     finally:
         with lock:
-            if cid in clients:
-                del clients[cid]
+            clients.pop(cid, None)
         conn.close()
         print(f"[-] Klient {cid} rozłączony")
 
@@ -162,11 +156,16 @@ def server_console():
                     continue
                 conn = clients[cid]["conn"]
                 mac_key = clients[cid]["mac_key"]
+                encription_key = clients[cid]["encription_key"]
 
-            header = struct.pack(">H", MessageType.END_SESSION.value << 14)
-            mac = hmac.new(mac_key, b"END", hashlib.sha256).digest()
-            conn.sendall(header + mac)
+            plaintext = bytes([MessageType.END_SESSION.value])
+            ciphertext, mac = encrypt_then_mac(encription_key, mac_key, plaintext)
+
+            frame = struct.pack(">H", len(ciphertext)) + ciphertext + mac
+            conn.sendall(frame)
             conn.close()
+            with lock:
+                clients.pop(cid, None)
 
             print(f"[+] Zakończono sesję klienta {cid}")
 
@@ -212,7 +211,12 @@ def main():
         with lock:
             client_id_seq += 1
             cid = client_id_seq
-            clients[cid] = {"conn": conn, "addr": addr, "mac_key": None}
+            clients[cid] = {
+                "conn": conn,
+                "addr": addr,
+                "mac_key": None,
+                "encription_key": None,
+            }
 
         threading.Thread(
             target=handle_client, args=(conn, addr, cid), daemon=True
