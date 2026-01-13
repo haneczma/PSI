@@ -20,10 +20,10 @@ running = True
 
 
 class MessageType(Enum):
-    CLIENT_HELLO = 0b00
-    SERVER_HELLO = 0b01
-    ENCRYPTED_MSG = 0b10
-    END_SESSION = 0b11
+    CLIENT_HELLO = 0
+    SERVER_HELLO = 1
+    ENCRYPTED_MSG = 2
+    END_SESSION = 3
 
 
 def recv_exact(sock, n):
@@ -70,7 +70,7 @@ def handle_client(conn, addr, cid):
         header = struct.unpack(">H", data[:2])[0]
         msg_type = header >> 14
         if msg_type != MessageType.CLIENT_HELLO.value:
-            print("Połączenie tzreba zacząć od Client_hello")
+            print("Połączenie trzeba zacząć od Client_hello")
             return
 
         g = header & 0x3FFF
