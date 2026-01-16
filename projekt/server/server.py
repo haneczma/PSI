@@ -5,12 +5,15 @@ import random
 import hashlib
 import hmac
 import sys
-from Cryptodome.Cipher import AES
-from Cryptodome.Util.Padding import pad, unpad
+import os
+
+from cryptography.hazmat.primitives.ciphers.algorithms import AES
+from cryptography.hazmat.primitives.ciphers.modes import CBC
+from cryptography.hazmat.primitives.ciphers import Cipher
+from cryptography.hazmat.primitives.padding import PKCS7
 from enum import Enum
 
 MAC_LEN = 32
-AES_BLOCK = 16
 
 clients = {}
 client_id_seq = 0
@@ -38,27 +41,49 @@ def recv_exact(sock, n):
 
 def derive_keys(shared_secret: int):
     s = shared_secret.to_bytes(4, "big")
-    encription_key = hashlib.sha256(s + b"ENC").digest()
+    encryption_key = hashlib.sha256(s + b"ENC").digest()
     mac_key = hashlib.sha256(s + b"MAC").digest()
-    return encription_key, mac_key
+    return encryption_key, mac_key
 
 
-def encrypt_then_mac(encription_key, mac_key, plaintext):
-    iv = random.randbytes(16)
-    cipher = AES.new(encription_key, AES.MODE_CBC, iv)
-    ciphertext = iv + cipher.encrypt(pad(plaintext, AES_BLOCK))
+def encrypt_then_mac(encryption_key, mac_key, plaintext):
+    iv = os.urandom(16)
+
+    padder = PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+
+    cipher = Cipher(
+        AES(encryption_key),
+        CBC(iv),
+    )
+    encryptor = cipher.encryptor()
+    ciphertext_body = encryptor.update(padded) + encryptor.finalize()
+
+    ciphertext = iv + ciphertext_body
     mac = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
+
     return ciphertext, mac
 
 
-def decrypt_and_verify(encription_key, mac_key, ciphertext, mac):
+def decrypt_and_verify(encryption_key, mac_key, ciphertext, mac):
     expected_mac = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
-    if expected_mac != mac:
+    if not hmac.compare_digest(expected_mac, mac):
         raise ValueError("MAC error")
+
     iv = ciphertext[:16]
     ct = ciphertext[16:]
-    cipher = AES.new(encription_key, AES.MODE_CBC, iv)
-    return unpad(cipher.decrypt(ct), AES_BLOCK)
+
+    cipher = Cipher(
+        AES(encryption_key),
+        CBC(iv),
+    )
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(ct) + decryptor.finalize()
+
+    unpadder = PKCS7(128).unpadder()
+    plaintext = unpadder.update(padded) + unpadder.finalize()
+
+    return plaintext
 
 
 def handle_client(conn, addr, cid):
@@ -84,11 +109,11 @@ def handle_client(conn, addr, cid):
         conn.sendall(server_hello)
 
         shared_secret = pow(A, b, p)
-        encription_key, mac_key = derive_keys(shared_secret)
+        encryption_key, mac_key = derive_keys(shared_secret)
 
         with lock:
             clients[cid]["mac_key"] = mac_key
-            clients[cid]["encription_key"] = encription_key
+            clients[cid]["encryption_key"] = encryption_key
 
         while True:
             # jawna długość ramki
@@ -98,7 +123,7 @@ def handle_client(conn, addr, cid):
             ciphertext = recv_exact(conn, length)
             mac = recv_exact(conn, MAC_LEN)
 
-            plaintext = decrypt_and_verify(encription_key, mac_key, ciphertext, mac)
+            plaintext = decrypt_and_verify(encryption_key, mac_key, ciphertext, mac)
 
             msg_type = plaintext[0]
             payload = plaintext[1:]
@@ -156,10 +181,10 @@ def server_console():
                     continue
                 conn = clients[cid]["conn"]
                 mac_key = clients[cid]["mac_key"]
-                encription_key = clients[cid]["encription_key"]
+                encryption_key = clients[cid]["encryption_key"]
 
             plaintext = bytes([MessageType.END_SESSION.value])
-            ciphertext, mac = encrypt_then_mac(encription_key, mac_key, plaintext)
+            ciphertext, mac = encrypt_then_mac(encryption_key, mac_key, plaintext)
 
             frame = struct.pack(">H", len(ciphertext)) + ciphertext + mac
             conn.sendall(frame)
@@ -215,7 +240,7 @@ def main():
                 "conn": conn,
                 "addr": addr,
                 "mac_key": None,
-                "encription_key": None,
+                "encryption_key": None,
             }
 
         threading.Thread(
