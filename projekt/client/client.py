@@ -5,9 +5,13 @@ import hashlib
 import hmac
 import sys
 import select
-from Cryptodome.Cipher import AES
-from Cryptodome.Util.Padding import pad, unpad
+import os
+
 from enum import Enum
+from cryptography.hazmat.primitives.ciphers.algorithms import AES
+from cryptography.hazmat.primitives.ciphers.modes import CBC
+from cryptography.hazmat.primitives.ciphers import Cipher
+from cryptography.hazmat.primitives.padding import PKCS7
 
 MAC_LEN = 32
 AES_BLOCK = 16
@@ -38,28 +42,44 @@ def derive_keys(shared_secret: int):
 
 
 def encrypt_then_mac(encryption_key, mac_key, plaintext):
-    iv = random.randbytes(16)
-    cipher = AES.new(encryption_key, AES.MODE_CBC, iv)
-    ciphertext = iv + cipher.encrypt(pad(plaintext, AES_BLOCK))
+    iv = os.urandom(16)
+
+    padder = PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+
+    cipher = Cipher(AES(encryption_key), CBC(iv))
+    encryptor = cipher.encryptor()
+    ciphertext_body = encryptor.update(padded) + encryptor.finalize()
+
+    ciphertext = iv + ciphertext_body
     mac = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
+
     return ciphertext, mac
 
 
 def decrypt_and_verify(encryption_key, mac_key, ciphertext, mac):
     expected_mac = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
-    if expected_mac != mac:
+    if not hmac.compare_digest(expected_mac, mac):
         raise ValueError("MAC error")
+
     iv = ciphertext[:16]
     ct = ciphertext[16:]
-    cipher = AES.new(encryption_key, AES.MODE_CBC, iv)
-    return unpad(cipher.decrypt(ct), AES_BLOCK)
+
+    cipher = Cipher(AES(encryption_key), CBC(iv))
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(ct) + decryptor.finalize()
+
+    unpadder = PKCS7(128).unpadder()
+    plaintext = unpadder.update(padded) + unpadder.finalize()
+
+    return plaintext
 
 
 class Client:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.sock = None
+        self.sock: socket.socket
         self.encryption_key = None
         self.mac_key = None
         self.connected = False
@@ -123,7 +143,9 @@ class Client:
         ciphertext = recv_exact(self.sock, length)
         mac = recv_exact(self.sock, MAC_LEN)
 
-        plaintext = decrypt_and_verify(self.encryption_key, self.mac_key, ciphertext, mac)
+        plaintext = decrypt_and_verify(
+            self.encryption_key, self.mac_key, ciphertext, mac
+        )
         msg_type = plaintext[0]
 
         if msg_type == MessageType.END_SESSION.value:
