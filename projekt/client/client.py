@@ -4,6 +4,7 @@ import random
 import hashlib
 import hmac
 import sys
+import select
 from Cryptodome.Cipher import AES
 from Cryptodome.Util.Padding import pad, unpad
 from enum import Enum
@@ -58,7 +59,7 @@ class Client:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.sock: socket.socket | None = None
+        self.sock = None
         self.encryption_key = None
         self.mac_key = None
         self.connected = False
@@ -83,9 +84,8 @@ class Client:
 
         data = recv_exact(self.sock, 6)
         header = struct.unpack(">H", data[:2])[0]
-        msg_type = header >> 14
-        if msg_type != MessageType.SERVER_HELLO.value:
-            raise RuntimeError("Oczekiwano ServerHello")
+        if header >> 14 != MessageType.SERVER_HELLO.value:
+            raise RuntimeError
 
         B = struct.unpack(">I", data[2:6])[0]
 
@@ -95,34 +95,21 @@ class Client:
         self.connected = True
         print("[+] Połączono z serwerem")
 
-        with open("client_key.txt", "w") as f:
-            f.write(f"shared_secret={shared_secret}\n")
-            f.write(self.encryption_key.hex() + "\n")
-            f.write(self.mac_key.hex() + "\n")
-
-    def send_message(self, text: str):
+    def send_message(self, text):
         if not self.connected:
-            print("Brak połączenia")
             return
 
         plaintext = bytes([MessageType.ENCRYPTED_MSG.value]) + text.encode()
-        ciphertext, mac = encrypt_then_mac(
-            self.encryption_key, self.mac_key, plaintext
-        )
-
+        ciphertext, mac = encrypt_then_mac(self.encryption_key, self.mac_key, plaintext)
         frame = struct.pack(">H", len(ciphertext)) + ciphertext + mac
         self.sock.sendall(frame)
 
     def end_session(self):
         if not self.connected:
-            print("Brak połączenia")
             return
 
         plaintext = bytes([MessageType.END_SESSION.value])
-        ciphertext, mac = encrypt_then_mac(
-            self.encryption_key, self.mac_key, plaintext
-        )
-
+        ciphertext, mac = encrypt_then_mac(self.encryption_key, self.mac_key, plaintext)
         frame = struct.pack(">H", len(ciphertext)) + ciphertext + mac
         self.sock.sendall(frame)
 
@@ -130,26 +117,21 @@ class Client:
         self.connected = False
         print("[+] Sesja zakończona")
 
-    def receive_loop(self):
-        try:
-            while self.connected:
-                raw_len = recv_exact(self.sock, 2)
-                length = struct.unpack(">H", raw_len)[0]
-                ciphertext = recv_exact(self.sock, length)
-                mac = recv_exact(self.sock, MAC_LEN)
+    def handle_incoming(self):
+        raw_len = recv_exact(self.sock, 2)
+        length = struct.unpack(">H", raw_len)[0]
+        ciphertext = recv_exact(self.sock, length)
+        mac = recv_exact(self.sock, MAC_LEN)
 
-                plaintext = decrypt_and_verify(
-                    self.encryption_key, self.mac_key, ciphertext, mac
-                )
+        plaintext = decrypt_and_verify(self.encryption_key, self.mac_key, ciphertext, mac)
+        msg_type = plaintext[0]
 
-                msg_type = plaintext[0]
-                if msg_type == MessageType.END_SESSION.value:
-                    print("[!] Serwer zakończył sesję")
-                    self.sock.close()
-                    self.connected = False
-                    break
-        except Exception:
+        if msg_type == MessageType.END_SESSION.value:
+            print("[!] Serwer zakończył sesję")
+            self.sock.close()
             self.connected = False
+        elif msg_type == MessageType.ENCRYPTED_MSG.value:
+            print(f"[Serwer] {plaintext[1:].decode()}")
 
 
 def main():
@@ -157,39 +139,35 @@ def main():
         print("python3 client.py <host> <port>")
         return
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-
-    client = Client(host, port)
-
+    client = Client(sys.argv[1], int(sys.argv[2]))
     print("Polecenia: connect | send <msg> | end | quit")
 
     while True:
-        try:
-            cmd = input("> ").strip()
-        except EOFError:
-            break
+        inputs = [sys.stdin]
+        if client.connected:
+            inputs.append(client.sock)
 
-        if cmd == "connect":
-            client.connect()
+        ready, _, _ = select.select(inputs, [], [])
 
-        elif cmd.startswith("send"):
-            parts = cmd.split(" ", 1)
-            if len(parts) != 2:
-                print("Użycie: send <wiadomość>")
-                continue
-            client.send_message(parts[1])
+        for r in ready:
+            if r == sys.stdin:
+                print("> ", end="", flush=True)
+                cmd = sys.stdin.readline().strip()
+                if cmd == "connect":
+                    client.connect()
+                elif cmd.startswith("send "):
+                    client.send_message(cmd.split(" ", 1)[1])
+                elif cmd == "end":
+                    client.end_session()
+                elif cmd == "quit":
+                    if client.connected:
+                        client.end_session()
+                    return
+                else:
+                    print("Polecenia: connect | send <msg> | end | quit")
 
-        elif cmd == "end":
-            client.end_session()
-
-        elif cmd == "quit":
-            if client.connected:
-                client.end_session()
-            break
-
-        else:
-            print("Polecenia: connect | send <msg> | end | quit")
+            elif r == client.sock:
+                client.handle_incoming()
 
 
 if __name__ == "__main__":
