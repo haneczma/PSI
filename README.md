@@ -42,3 +42,29 @@ W katalogu serwer znajduje sie konfiguracja dla kontenera serwera w dockerze ora
 
 Skrypt app3-compose.sh służy do zbudowania i włączenia klienta oraz serwera.
 Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu cw3.
+
+# Projekt
+
+## Układ plików
+
+W katalogu projekt znajduje się implementacja projektu.
+
+W katalogu klient znajduje się konfiguracja dla kontenera klienta w dockerze i program w pythonie.
+
+W katalogu serwer znajduje się konfiguracja dla kontenera serwera w dockerze, skrypt w bashu, który służy jako endpoint w dockerze i program w pythonie.
+
+## Wywołanie rozwiazania
+
+Skrypt app4.sh pozwala na proste przetestowanie połączenia jedynie ze strony klienta, jednak dla większej interaktywności programu najlepiej otworzyć kilka terminali. Należy mu nadać odpowiednie pozwolenia (chmod +x), a następnie wywołać z poziomu katalogu projekt.
+
+### Wywołanie serwera
+
+docker-compose up server
+
+### Połączenie z terminalem serwera
+
+docker-compose attach server
+
+### Wywołanie klienta
+
+docker-compose run client
