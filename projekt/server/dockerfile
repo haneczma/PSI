@@ -3,8 +3,9 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y tcpdump && \
-    pip install --no-cache-dir cryptography
+    apt-get install -y tcpdump iproute2 && \
+    pip install --no-cache-dir cryptography && \
+    rm -rf /var/lib/apt/lists/
 
 COPY server.py .
 

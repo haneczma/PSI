@@ -1,7 +1,7 @@
 #!/bin/sh
 # entrypoint.sh
-set -e 
+set -e
 
-tcpdump -i any tcp port 1234 -w /tmp/capture.pcap &
+tcpdump -i eth0 tcp -w /tmp/capture.pcap -U &
 
 python3 server.py 1234 10
