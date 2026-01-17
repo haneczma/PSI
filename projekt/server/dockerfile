@@ -3,10 +3,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y tcpdump &&
+    apt-get install -y tcpdump && \
     pip install --no-cache-dir cryptography
 
 COPY server.py .
-copy entrypoint.sh .
+COPY entrypoint.sh .
 
 ENTRYPOINT ["./entrypoint.sh"]
