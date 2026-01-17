@@ -7,6 +7,8 @@ RUN apt-get update && \
     pip install --no-cache-dir cryptography
 
 COPY server.py .
+
 COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
